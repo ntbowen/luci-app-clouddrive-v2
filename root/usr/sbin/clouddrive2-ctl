@@ -1,0 +1,403 @@
+#!/bin/sh
+#
+# Unified control script for luci-app-clouddrive-v2
+# Subcommands: status, versions, deploy, uninstall, start, stop, restart
+#
+
+set -e
+
+GITHUB_REPO="https://github.com/cloud-fs/cloud-fs.github.io"
+LOG_FILE="/tmp/clouddrive2-deploy.log"
+STATUS_FILE="/tmp/clouddrive2-deploy.status"
+LOCK_FILE="/tmp/clouddrive2-deploy.lock"
+VERSIONS_CACHE="/tmp/clouddrive2-versions.cache"
+
+log_msg() {
+	local msg="$1"
+	local ts
+	ts=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "[$ts] $msg" >> "$LOG_FILE"
+}
+
+set_status() {
+	echo "$1" > "$STATUS_FILE"
+	log_msg "Status: $1"
+}
+
+uci_get() {
+	local option="$1"
+	local default="$2"
+	uci -q get "clouddrive2.config.$option" 2>/dev/null || echo "$default"
+}
+
+uci_set() {
+	local option="$1"
+	local value="$2"
+	uci set "clouddrive2.config.$option=$value"
+}
+
+apply_proxy_env() {
+	local proxy="$1"
+	if [ -n "$proxy" ]; then
+		export http_proxy="$proxy"
+		export https_proxy="$proxy"
+		export all_proxy="$proxy"
+	fi
+}
+
+normalize_url() {
+	local url="$1"
+	local mirror="${2:-https://github.com}"
+	case "$url" in
+		https://github.com/*)
+			echo "${mirror}${url#https://github.com}"
+			;;
+		/*)
+			echo "${mirror}${url}"
+			;;
+		http*)
+			echo "$url"
+			;;
+		*)
+			echo "${mirror}/${url}"
+			;;
+	esac
+}
+
+detect_arch() {
+	local arch
+	arch=$(uname -m)
+	case "$arch" in
+		x86_64|amd64)
+			echo "clouddrive-2-linux-x86_64"
+			;;
+		aarch64|arm64)
+			echo "clouddrive-2-linux-aarch64"
+			;;
+		armv7l|armv7)
+			echo "clouddrive-2-linux-armv7"
+			;;
+		*)
+			echo "unsupported:$arch"
+			;;
+	esac
+}
+
+ensure_downloader() {
+	if command -v curl >/dev/null 2>&1; then
+		echo "curl"
+	elif command -v wget-ssl >/dev/null 2>&1; then
+		echo "wget-ssl"
+	elif command -v wget >/dev/null 2>&1; then
+		echo "wget"
+	else
+		echo ""
+	fi
+}
+
+fetch_page() {
+	local url="$1"
+	local timeout="${2:-60}"
+	local dl
+	dl=$(ensure_downloader)
+	[ -n "$dl" ] || { echo "No downloader available" >&2; return 1; }
+	case "$dl" in
+		curl)
+			curl -fsSL --connect-timeout 10 --max-time "$timeout" "$url"
+			;;
+		*)
+			"$dl" -q -O - --timeout="$timeout" --tries=1 "$url"
+			;;
+	esac
+}
+
+download_file() {
+	local url="$1"
+	local output="$2"
+	local dl
+	dl=$(ensure_downloader)
+	case "$dl" in
+		curl)
+			curl -fsSL --connect-timeout 10 --max-time 300 -o "$output" "$url"
+			;;
+		wget-ssl|wget)
+			"$dl" -q -O "$output" --timeout=60 --tries=2 "$url"
+			;;
+		*)
+			echo "No downloader available" >&2
+			return 1
+			;;
+	esac
+}
+
+cmd_status() {
+	local install_path port version installed running pid
+	install_path=$(uci_get "install_path" "/opt/clouddrive2")
+	port=$(uci_get "port" "19798")
+	version=$(uci_get "version" "")
+
+	if [ -x "$install_path/clouddrive" ]; then
+		installed="true"
+	else
+		installed="false"
+	fi
+
+	if /etc/init.d/clouddrive2 running >/dev/null 2>&1; then
+		running="true"
+		pid=$(cat /var/run/clouddrive2.pid 2>/dev/null || echo "")
+	else
+		running="false"
+		pid=""
+	fi
+
+	local arch_prefix
+	arch_prefix=$(detect_arch)
+
+	printf '{"installed":%s,"running":%s,"version":"%s","arch":"%s","arch_prefix":"%s","install_path":"%s","port":"%s","pid":"%s"}\n' \
+		"$installed" "$running" "$version" "$(uname -m)" "$arch_prefix" "$install_path" "$port" "$pid"
+}
+
+refresh_versions_cache() {
+	local proxy page tags
+	proxy=$(uci_get "proxy" "")
+	apply_proxy_env "$proxy"
+
+	page=$(fetch_page "$GITHUB_REPO/releases" 120) || return 1
+	tags=$(echo "$page" | grep -oE '/cloud-fs/cloud-fs\.github\.io/releases/tag/[^"]+' | sed 's|.*/tag/||' | sort -u -V -r)
+	[ -n "$tags" ] || return 1
+	printf '%s\n' "$tags" > "$VERSIONS_CACHE"
+}
+
+fallback_versions() {
+	local latest tag
+	latest=$(fetch_page "https://www.clouddrive2.com/download.html" 60 2>/dev/null | grep -oE 'https://github\.com/cloud-fs/cloud-fs\.github\.io/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/' | sed 's|.*/download/||;s|/$||' | head -n 1)
+	[ -n "$latest" ] && echo "$latest"
+	for tag in v1.0.16 v1.0.15 v1.0.14 v1.0.14-beta2 v1.0.14-beta v1.0.13 v1.0.12 v1.0.11 v1.0.10 v1.0.9 v1.0.8 v1.0.7 v1.0.6 v1.0.5 v1.0.4 v1.0.3 v1.0.2 v1.0.1 v1.0.0 v0.9.24; do
+		[ "$tag" != "$latest" ] && echo "$tag"
+	done
+}
+
+cmd_versions() {
+	local cache_mtime age now
+
+	# If we have a fresh cache, use it immediately and refresh in the background
+	if [ -f "$VERSIONS_CACHE" ]; then
+		cache_mtime=$(stat -c %Y "$VERSIONS_CACHE" 2>/dev/null || echo 0)
+		now=$(date +%s 2>/dev/null || echo 0)
+		age=$((now - cache_mtime))
+		if [ "$age" -ge 0 ] && [ "$age" -lt 3600 ]; then
+			cat "$VERSIONS_CACHE"
+			( refresh_versions_cache >/dev/null 2>&1 & )
+			return 0
+		fi
+	fi
+
+	# Otherwise return the fallback list immediately and refresh the cache in the background
+	fallback_versions
+	( rm -f "$VERSIONS_CACHE"; refresh_versions_cache >/dev/null 2>&1 ) &
+	return 0
+}
+
+cmd_deploy() {
+	local version="${1:-}"
+	local proxy="${2:-}"
+	local install_path arch_prefix mirror repo_path
+
+	if [ -z "$version" ]; then
+		log_msg "Version not specified"
+		set_status "failed"
+		return 1
+	fi
+
+	case "$version" in
+		v*|V*) ;;
+		*) version="v$version" ;;
+	esac
+
+	install_path=$(uci_get "install_path" "/opt/clouddrive2")
+	[ -z "$proxy" ] && proxy=$(uci_get "proxy" "")
+	mirror=$(uci_get "mirror" "https://github.com")
+	if [ -n "$proxy" ]; then
+		uci_set "proxy" "$proxy"
+		uci commit clouddrive2
+	fi
+
+	arch_prefix=$(detect_arch)
+	case "$arch_prefix" in
+		unsupported:*)
+			log_msg "Unsupported architecture: ${arch_prefix#unsupported:}"
+			set_status "failed"
+			return 1
+			;;
+	esac
+
+	if [ -z "$(ensure_downloader)" ]; then
+		log_msg "No downloader (curl/wget) is available"
+		set_status "failed"
+		return 1
+	fi
+
+	if [ -f "$LOCK_FILE" ]; then
+		local pid
+		pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+			log_msg "Another deployment is already running (pid $pid)"
+			return 1
+		fi
+	fi
+
+	log_msg "Deploying CloudDrive2 $version for architecture $arch_prefix"
+	set_status "downloading"
+
+	mkdir -p "$install_path"
+
+	# Run the heavy work in a background subshell so the web call returns immediately
+	(
+		apply_proxy_env "$proxy"
+		log_msg "Using proxy: ${proxy:-(none)}"
+
+		local page asset_link asset_name tmp_dir asset_path extracted_dir
+
+		asset_name="${arch_prefix}-${version#v}.tgz"
+		asset_link=$(normalize_url "${GITHUB_REPO}/releases/download/${version}/${asset_name}" "$mirror")
+
+		asset_name=$(basename "$asset_link" | sed 's/[?#].*$//')
+
+		log_msg "Selected asset: $asset_name"
+		log_msg "Download URL: $asset_link"
+
+		tmp_dir=$(mktemp -d /tmp/clouddrive2-deploy-XXXXXX)
+		asset_path="$tmp_dir/$asset_name"
+
+		download_file "$asset_link" "$asset_path" || {
+			log_msg "Failed to download asset"
+			rm -rf "$tmp_dir"
+			set_status "failed"
+			exit 1
+		}
+
+		log_msg "Download completed: $asset_path"
+		set_status "extracting"
+
+		mkdir -p "$tmp_dir/extract"
+		tar -xzf "$asset_path" -C "$tmp_dir/extract" || {
+			log_msg "Failed to extract archive"
+			rm -rf "$tmp_dir"
+			set_status "failed"
+			exit 1
+		}
+
+		extracted_dir=$(find "$tmp_dir/extract" -maxdepth 1 -mindepth 1 -type d | head -n 1)
+		if [ -z "$extracted_dir" ]; then
+			log_msg "Extracted directory not found"
+			rm -rf "$tmp_dir"
+			set_status "failed"
+			exit 1
+		fi
+
+		set_status "installing"
+
+		if /etc/init.d/clouddrive2 running >/dev/null 2>&1; then
+			log_msg "Stopping running CloudDrive2 service"
+			/etc/init.d/clouddrive2 stop || true
+		fi
+
+		log_msg "Installing to $install_path"
+		rm -rf "$install_path"/* "$install_path"/.[!.]* "$install_path"/..?* 2>/dev/null || true
+		( cd "$extracted_dir" && cp -a . "$install_path"/ )
+		chmod +x "$install_path/clouddrive" 2>/dev/null || true
+
+		echo "$version" > "$install_path/.version"
+
+		uci_set "version" "$version"
+		uci commit clouddrive2
+
+		log_msg "Installation completed"
+		rm -rf "$tmp_dir"
+
+		set_status "starting"
+		/etc/init.d/clouddrive2 enable
+		/etc/init.d/clouddrive2 start || {
+			log_msg "Failed to start CloudDrive2 service"
+			set_status "failed"
+			exit 1
+		}
+
+		log_msg "CloudDrive2 $version deployed and started"
+		set_status "completed"
+	) &
+
+	echo $! > "$LOCK_FILE"
+	return 0
+}
+
+cmd_uninstall() {
+	local install_path
+	install_path=$(uci_get "install_path" "/opt/clouddrive2")
+
+	log_msg "Uninstalling CloudDrive2 from $install_path"
+
+	if /etc/init.d/clouddrive2 running >/dev/null 2>&1; then
+		/etc/init.d/clouddrive2 stop || true
+	fi
+	/etc/init.d/clouddrive2 disable 2>/dev/null || true
+
+	rm -rf "$install_path"
+
+	uci_set "version" ""
+	uci commit clouddrive2
+
+	log_msg "Uninstall completed"
+	echo "Uninstalled"
+}
+
+cmd_service() {
+	local action="$1"
+	case "$action" in
+		start|stop|restart|reload|enable|disable)
+			/etc/init.d/clouddrive2 "$action"
+			;;
+		*)
+			echo "Unknown service action: $action" >&2
+			return 1
+			;;
+	esac
+}
+
+usage() {
+	cat <<EOF
+Usage: clouddrive2-ctl <command> [args]
+Commands:
+  status                         Show JSON status
+  versions                       List available release tags
+  deploy <version> [proxy]       Download and install CloudDrive2 version in background
+  uninstall                      Stop and remove CloudDrive2
+  start|stop|restart|reload      Control init.d service
+EOF
+}
+
+case "${1:-}" in
+	status)
+		cmd_status
+		;;
+	versions)
+		cmd_versions
+		;;
+	deploy)
+		shift
+		cmd_deploy "$1" "$2"
+		;;
+	uninstall)
+		cmd_uninstall
+		;;
+	start|stop|restart|reload|enable|disable)
+		cmd_service "$1"
+		;;
+	-h|--help|help)
+		usage
+		;;
+	*)
+		usage >&2
+		exit 1
+		;;
+esac

@@ -1,0 +1,227 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "CloudDrive2"
+msgstr "CloudDrive2"
+
+msgid "Deploy and manage CloudDrive2 natively on OpenWrt. CloudDrive2 turns multiple cloud storage services into a unified local filesystem."
+msgstr "在 OpenWrt 上原生部署并管理 CloudDrive2。CloudDrive2 可将多种云存储服务整合为统一的本地文件系统。"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Installed"
+msgstr "已安装"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "No"
+msgstr "否"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Installed Version"
+msgstr "已安装版本"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Architecture"
+msgstr "架构"
+
+msgid "Install Path"
+msgstr "安装路径"
+
+msgid "Port"
+msgstr "端口"
+
+msgid "PID"
+msgstr "进程号"
+
+msgid "Refresh Status"
+msgstr "刷新状态"
+
+msgid "Deploy CloudDrive2"
+msgstr "部署 CloudDrive2"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Select a version..."
+msgstr "选择版本..."
+
+msgid "Loading versions..."
+msgstr "正在加载版本..."
+
+msgid "Failed to load versions"
+msgstr "加载版本失败"
+
+msgid "Failed to load version list: "
+msgstr "加载版本列表失败："
+
+msgid "Reload"
+msgstr "刷新"
+
+msgid "Download Mirror"
+msgstr "下载镜像源"
+
+msgid "GitHub (default)"
+msgstr "GitHub（默认）"
+
+msgid "ghfast.top"
+msgstr "ghfast.top"
+
+msgid "gh.zwy.one"
+msgstr "gh.zwy.one"
+
+msgid "Failed to save "
+msgstr "保存失败 "
+
+msgid "Target Architecture"
+msgstr "目标架构"
+
+msgid "Detecting..."
+msgstr "检测中..."
+
+msgid "Deploy / Upgrade"
+msgstr "部署 / 升级"
+
+msgid "Download Proxy"
+msgstr "下载代理"
+
+msgid "e.g. http://127.0.0.1:7890"
+msgstr "例如 http://127.0.0.1:7890"
+
+msgid "Deploying..."
+msgstr "部署中..."
+
+msgid "Please select a version."
+msgstr "请选择一个版本。"
+
+msgid "Deploy CloudDrive2 %s?"
+msgstr "部署 CloudDrive2 %s？"
+
+msgid "Service Actions"
+msgstr "服务操作"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Uninstall"
+msgstr "卸载"
+
+msgid "%s command sent."
+msgstr "%s 命令已发送。"
+
+msgid "%s failed: "
+msgstr "%s 失败："
+
+msgid "Are you sure you want to uninstall CloudDrive2? All data under the install path will be removed."
+msgstr "确定要卸载 CloudDrive2 吗？安装路径下的所有数据都将被删除。"
+
+msgid "CloudDrive2 uninstalled."
+msgstr "CloudDrive2 已卸载。"
+
+msgid "Uninstall failed: "
+msgstr "卸载失败："
+
+msgid "Open CloudDrive2"
+msgstr "打开 CloudDrive2"
+
+msgid "Open in New Tab"
+msgstr "在新标签页打开"
+
+msgid "Default address: http://%s:19798/"
+msgstr "默认地址：http://%s:19798/"
+
+msgid "Inline Preview"
+msgstr "内嵌预览"
+
+msgid "LuCI is using HTTPS. The CloudDrive2 iframe uses HTTP and may be blocked by the browser. Use the \"Open in New Tab\" button if the preview fails."
+msgstr "LuCI 当前使用 HTTPS。CloudDrive2 内嵌页面使用 HTTP，可能会被浏览器阻止。如果预览失败，请使用「在新标签页打开」按钮。"
+
+msgid "Deployment Log"
+msgstr "部署日志"
+
+msgid "Deployment log will appear here..."
+msgstr "部署日志将显示在此处..."
+
+msgid "Refresh Log"
+msgstr "刷新日志"
+
+msgid "Clear"
+msgstr "清空"
+
+msgid "CloudDrive2 deployed successfully."
+msgstr "CloudDrive2 部署成功。"
+
+msgid "CloudDrive2 deployment failed."
+msgstr "CloudDrive2 部署失败。"
+
+msgid "Deployment request failed: "
+msgstr "部署请求失败："
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Not installed"
+msgstr "未安装"
+
+msgid "Deployment failed"
+msgstr "部署失败"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Open Panel"
+msgstr "打开面板"
+
+msgid "Web UI: %s"
+msgstr "Web 界面：%s"
+
+msgid "Upgrade / Redeploy"
+msgstr "升级 / 重新部署"
+
+msgid "Deploy"
+msgstr "部署"
+
+msgid "CloudDrive2 is not installed yet. Select a version and deploy it to this router."
+msgstr "CloudDrive2 尚未安装。请选择版本并部署到本路由器。"
+
+msgid "Remove binary and all data under the install path."
+msgstr "删除程序文件及安装路径下的全部数据。"
+
+msgid "Download"
+msgstr "下载"
+
+msgid "Extract"
+msgstr "解压"
+
+msgid "Install"
+msgstr "安装"
+
+msgid "Last deployment completed"
+msgstr "上次部署已完成"
+
+msgid "Last deployment failed"
+msgstr "上次部署失败"
+
+msgid "No deployment in progress"
+msgstr "当前没有进行中的部署"
+
+msgid "Deploying: %s"
+msgstr "部署中：%s"

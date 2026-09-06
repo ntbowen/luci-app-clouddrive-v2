@@ -1,0 +1,39 @@
+{
+    "luci-app-clouddrive-v2": {
+        "description": "Grant access to CloudDrive-v2 deployment and management",
+        "read": {
+            "cgi-io": [ "upload" ],
+            "file": {
+                "/usr/sbin/clouddrive2-ctl": [ "exec" ],
+                "/etc/init.d/clouddrive2": [ "exec" ],
+                "/sbin/uci": [ "exec" ],
+                "/bin/cat": [ "exec" ],
+                "/opt/clouddrive2": [ "read", "write" ],
+                "/opt/clouddrive2/*": [ "read", "write" ],
+                "/tmp/clouddrive2-deploy.log": [ "read", "write" ],
+                "/tmp/clouddrive2-deploy.status": [ "read", "write" ]
+            },
+            "ubus": {
+                "file": [ "read", "write", "exec", "stat", "list" ],
+                "system": [ "info" ]
+            },
+            "uci": [ "clouddrive2" ]
+        },
+        "write": {
+            "cgi-io": [ "upload" ],
+            "file": {
+                "/usr/sbin/clouddrive2-ctl": [ "exec", "write" ],
+                "/etc/init.d/clouddrive2": [ "exec" ],
+                "/sbin/uci": [ "exec" ],
+                "/opt/clouddrive2": [ "write" ],
+                "/opt/clouddrive2/*": [ "write" ],
+                "/tmp/clouddrive2-deploy.log": [ "write" ],
+                "/tmp/clouddrive2-deploy.status": [ "write" ]
+            },
+            "ubus": {
+                "file": [ "write", "exec", "list" ]
+            },
+            "uci": [ "clouddrive2" ]
+        }
+    }
+}

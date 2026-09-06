@@ -1,0 +1,8 @@
+config clouddrive2 'config'
+	option enabled '1'
+	option install_path '/opt/clouddrive2'
+	option port '19798'
+	option version ''
+	option proxy ''
+	option mirror ''
+	option user 'root'
