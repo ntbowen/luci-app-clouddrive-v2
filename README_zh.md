@@ -4,6 +4,8 @@
 
 OpenWrt 包名：`luci-app-clouddrive-v2`。
 
+<img width="3274" height="1436" alt="截图 2026-09-07 00-02-21" src="https://github.com/user-attachments/assets/19508f49-87de-49be-ba50-9507d0dfede6" />
+
 ## 功能
 
 - 自动检测路由器架构，从 GitHub 下载匹配的 CloudDrive2 发行版。
