@@ -336,28 +336,45 @@ return view.extend({
     handleDeploy: function() {
         var select = document.getElementById('cd2-version');
         var proxyInput = document.getElementById('cd2-proxy');
+        var installInput = document.getElementById('cd2-install-path');
         if (!select || !select.value) {
             ui.addNotification(null, E('p', _('Please select a version.')), 'warning');
             return;
         }
         var version = select.value;
         var proxy = proxyInput ? (proxyInput.value || '').trim() : '';
+        var installPath = installInput ? (installInput.value || '').trim() : '';
+        if (!installPath) {
+            ui.addNotification(null, E('p', _('Please enter an install path.')), 'warning');
+            return;
+        }
         var self = this;
 
-        if (!confirm(_('Deploy CloudDrive2 %s?').format(version))) return;
+        if (!confirm(_('Deploy CloudDrive2 %s to %s?').format(version, installPath))) return;
 
         this._deployStatus = 'downloading';
-        this.setDeployStatus('downloading');
         this.setDeployState('deploying');
-        this.startDeployPolling();
 
-        var args = ['deploy', version];
-        if (proxy) args.push(proxy);
-        fs.exec(CTL, args).catch(function(err) {
-            self.stopDeployPolling();
-            self.setDeployState('idle');
-            ui.addNotification(null, E('p', _('Deployment request failed: ') + err.message), 'error');
-        });
+        function doDeploy() {
+            self.setDeployStatus('downloading');
+            self.startDeployPolling();
+            var args = ['deploy', version];
+            if (proxy) args.push(proxy);
+            fs.exec(CTL, args).catch(function(err) {
+                self.stopDeployPolling();
+                self.setDeployState('idle');
+                ui.addNotification(null, E('p', _('Deployment request failed: ') + err.message), 'error');
+            });
+        }
+
+        var currentPath = uci.get('clouddrive2', 'config', 'install_path') || '/opt/clouddrive2';
+        if (installPath !== currentPath) {
+            this.saveUciOption('install_path', installPath).then(doDeploy).catch(function() {
+                self.setDeployState('idle');
+            });
+        } else {
+            doDeploy();
+        }
     },
 
     /* ---------- versions / uci ---------- */
@@ -501,6 +518,14 @@ return view.extend({
             ]),
             E('label', {}, _('Target Architecture')),
             E('div', { 'id': 'cd2-arch-prefix', 'style': 'font-family:monospace;font-size:.9em;' }, ''),
+            E('label', {}, _('Install Path')),
+            E('input', {
+                'type': 'text',
+                'id': 'cd2-install-path',
+                'class': 'cbi-input-text',
+                'placeholder': '/opt/clouddrive2',
+                'value': uci.get('clouddrive2', 'config', 'install_path') || '/opt/clouddrive2'
+            }),
             E('label', {}, _('Download Mirror')),
             mirrorSelect,
             E('label', {}, _('Download Proxy')),

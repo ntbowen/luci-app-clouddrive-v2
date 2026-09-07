@@ -2,6 +2,10 @@
 
 LuCI application to deploy and manage the native CloudDrive2 binary on OpenWrt.
 
+[中文说明](README_zh.md)
+
+![Dashboard](screenshots/screenshot.png)
+
 Package name in OpenWrt: `luci-app-clouddrive-v2`.
 
 ## Features

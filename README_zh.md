@@ -2,6 +2,8 @@
 
 用于在 OpenWrt 上原生部署和管理 CloudDrive2 的 LuCI 应用。
 
+![界面截图](screenshots/screenshot.png)
+
 OpenWrt 包名：`luci-app-clouddrive-v2`。
 
 ## 功能
