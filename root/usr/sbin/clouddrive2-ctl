@@ -325,7 +325,7 @@ cmd_deploy() {
 
 		log_msg "CloudDrive2 $version deployed and started"
 		set_status "completed"
-	) &
+	) </dev/null >/dev/null 2>&1 &
 
 	echo $! > "$LOCK_FILE"
 	return 0

@@ -315,9 +315,7 @@ return view.extend({
                     self.stopDeployPolling();
                     self.setDeployState('idle');
                     self.updateStatusCard();
-                    if (deployStatus === 'completed')
-                        ui.addNotification(null, E('p', _('CloudDrive2 deployed successfully.')), 'success');
-                    else if (deployStatus === 'failed')
+                    if (deployStatus === 'failed')
                         ui.addNotification(null, E('p', _('CloudDrive2 deployment failed.')), 'error');
                 }
             }).catch(function() {});
